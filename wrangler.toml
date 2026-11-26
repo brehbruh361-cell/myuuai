@@ -1,0 +1,16 @@
+name = "donghua-studio-api"
+main = "worker.js"
+compatibility_date = "2025-11-01"
+
+# Workers AI untuk Auto Subtitle (Whisper)
+[ai]
+binding = "AI"
+
+[vars]
+# Ganti "*" dengan domain aplikasi kamu, contoh: "https://myuuai.pages.dev"
+ALLOWED_ORIGINS = "*"
+
+# Secret (jangan ditulis di file ini):
+#   npx wrangler secret put MAGIC_HOUR_API_KEY
+#   npx wrangler secret put APP_ACCESS_TOKEN
+#   npx wrangler secret put ELEVENLABS_API_KEY   (opsional, untuk Sound Effects)
