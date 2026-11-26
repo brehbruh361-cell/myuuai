@@ -1,16 +1,23 @@
 name = "myuuai"
 main = "worker.js"
-compatibility_date = "2025-11-01"
+compatibility_date = "2026-11-26"
 
-# Workers AI untuk Auto Subtitle (Whisper)
+# Frontend dashboard disajikan sebagai static assets.
+# Hanya request /api/* yang masuk ke Worker backend.
+[assets]
+directory = "./public"
+run_worker_first = ["/api/*"]
+not_found_handling = "single-page-application"
+
+# Workers AI untuk subtitle otomatis (Whisper)
 [ai]
 binding = "AI"
 
 [vars]
-# Ganti "*" dengan domain aplikasi kamu, contoh: "https://myuuai.pages.dev"
 ALLOWED_ORIGINS = "*"
 
-# Secret (jangan ditulis di file ini):
-#   npx wrangler secret put MAGIC_HOUR_API_KEY
-#   npx wrangler secret put APP_ACCESS_TOKEN
-#   npx wrangler secret put ELEVENLABS_API_KEY   (opsional, untuk Sound Effects)
+# Secrets disimpan di Cloudflare Dashboard, bukan di file ini:
+# MAGIC_HOUR_API_KEY   (sudah dipasang; satu key)
+# MAGIC_HOUR_API_KEYS  (opsional; beberapa key dipisahkan koma/baris baru)
+# APP_ACCESS_TOKEN    (opsional)
+# ELEVENLABS_API_KEY  (opsional, sound effects)
