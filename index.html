@@ -1802,7 +1802,7 @@ $("saveSettings").onclick=()=>{readSettings();persist();loadSettings();updateCha
 async function checkWorker(silent){
  const pill=$("connectionStatus");pill.className="status";pill.textContent="● Memeriksa...";
  try{
-  const base=endpoint("/");
+  const base=endpoint("/api/health");
   const r=await fetch(base,{headers:db.settings.accessToken?{"X-MyuuAI-Token":db.settings.accessToken}:{}});
   if(!r.ok)throw new Error("HTTP "+r.status);
   const data=await r.json();
