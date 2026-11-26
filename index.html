@@ -777,7 +777,7 @@ const ROUTES=["routeImage","routeVideo","routeVoice","routeMusic","routeSfx","ro
 const defaults={
  characters:[],episodes:[],projects:[],activeProject:null,gallery:[],
  settings:{
- workerUrl:"https://donghua-studio-api.muhmusin13.workers.dev",accessToken:"",
+ workerUrl:"https://myuuai.muhmusin13.workers.dev",accessToken:"",
  routeImage:"/api/image",routeVideo:"/api/video",
  routeVoice:"/api/voice",routeMusic:"/api/music",routeSfx:"/api/sfx",routeSubtitle:"/api/subtitle",
  routeStatus:"/api/status",routeVoices:"/api/voices",routeDownload:"/api/download",
@@ -1829,7 +1829,7 @@ $("saveSettings").onclick=()=>{readSettings();persist();loadSettings();updateCha
 async function checkWorker(silent){
  const pill=$("connectionStatus");pill.className="status";pill.textContent="● Memeriksa...";
  try{
-  const base=endpoint("/");
+  const base=endpoint("/api/health");
   const r=await fetch(base,{headers:db.settings.accessToken?{"X-MyuuAI-Token":db.settings.accessToken}:{}});
   if(!r.ok)throw new Error("HTTP "+r.status);
   const data=await r.json();
