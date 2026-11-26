@@ -337,7 +337,9 @@ export default {
       if (!post && path === "/api/status") return json(await getStatus(url, env), 200, cors);
       if (!post && path === "/api/voices") return json(await listVoices(url, env), 200, cors);
       if (!post && path === "/api/download") return await proxyDownload(url, cors);
-      throw new HttpError(404, "Route " + request.method + " " + path + " tidak ada di Worker.");
+      if (!post && !path.startsWith("/api/") && env.ASSETS) {
+  return env.ASSETS.fetch(request);
+      }throw new HttpError(404, "Route " + request.method + " " + path + " tidak ada di Worker.");
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 500;
       return json({ success: false, error: e.message || "Terjadi kesalahan di Worker.", code: e.code || null }, status, cors);
