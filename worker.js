@@ -314,7 +314,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
     try {
-      if (path === "/" || path === "/api/health") {
+      if (path === "/api/health") {
         return json({
           success: true,
           name: "MyuuAI Worker",
