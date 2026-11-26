@@ -125,8 +125,19 @@ async function createVideo(request, env) {
   const mode = str(form, "mode", "text");
   const model = VIDEO_MODELS.includes(str(form, "model")) ? str(form, "model") : "ltx-2.5";
   const duration = Math.round(Number(str(form, "duration", "5")));
+  const resolution = str(form, "resolution", "480p");
+  const supportedResolutions = {
+    "ltx-2.5": ["480p", "720p", "1080p"],
+    "seedance-2.0-fast": ["480p", "720p"],
+    "wan-3.0": ["480p", "720p", "1080p"],
+    "kling-2.6": ["720p", "1080p"],
+    "default": ["480p", "720p"]
+  };
   const audio = str(form, "audio") === "true";
   if (!Number.isFinite(duration) || duration < 1 || duration > 60) throw new HttpError(400, "Durasi video tidak valid.");
+  if (!(supportedResolutions[model] || supportedResolutions.default).includes(resolution)) {
+    throw new HttpError(422, `Resolusi ${resolution} tidak didukung model ${model}.`);
+  }
 
   if (mode === "reference") {
     const image = form.get("image");
@@ -136,6 +147,7 @@ async function createVideo(request, env) {
       name: "MyuuAI Image to Video",
       end_seconds: duration,
       model,
+      resolution,
       audio,
       assets: { image_file_path: filePath },
       ...(prompt ? { style: { prompt } } : {}),
@@ -146,7 +158,7 @@ async function createVideo(request, env) {
 
   if (!prompt) throw new HttpError(400, "Prompt video wajib diisi.");
   const aspect = ["16:9", "9:16", "1:1"].includes(str(form, "aspect_ratio")) ? str(form, "aspect_ratio") : "16:9";
-  const body = { name: "MyuuAI Text to Video", end_seconds: duration, aspect_ratio: aspect, model, audio, style: { prompt } };
+  const body = { name: "MyuuAI Text to Video", end_seconds: duration, aspect_ratio: aspect, model, resolution, audio, style: { prompt } };
   const r = await mh(env, "/v1/text-to-video", { method: "POST", body: JSON.stringify(body) });
   return { success: true, id: r.id, job_type: "video", credits_charged: r.credits_charged };
 }

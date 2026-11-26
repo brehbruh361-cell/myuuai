@@ -14,9 +14,3 @@ ALLOWED_ORIGINS = "*"
 #   npx wrangler secret put MAGIC_HOUR_API_KEY
 #   npx wrangler secret put APP_ACCESS_TOKEN
 #   npx wrangler secret put ELEVENLABS_API_KEY   (opsional, untuk Sound Effects)
-
-[assets]
-directory = "./"
-binding = "ASSETS"
-run_worker_first = ["/api/*"]
-not_found_handling = "single-page-application"

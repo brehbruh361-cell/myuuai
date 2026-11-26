@@ -103,6 +103,7 @@ border:1px solid var(--line);border-radius:10px;padding:12px;outline:none}
 color:#b8b1d1;padding:11px 14px;border-radius:10px;font-size:11px;font-weight:750}
 .tab.active,.choice.active{background:linear-gradient(100deg,#54318d,#244d83);
 border-color:#9875e6;color:white}
+.choice:disabled{opacity:.32;cursor:not-allowed;filter:grayscale(1)}
 .choices.large .choice{flex:1;min-width:95px}
 .dropzone{min-height:170px;background:#17142b;border:2px dashed #66518e;
 border-radius:14px;padding:20px;display:flex;align-items:center;
@@ -358,6 +359,13 @@ details.final-prompt pre{white-space:pre-wrap;background:#0d0c1d;border:1px soli
 <button class="choice" data-value="kling-2.6">Kling 2.6</button>
 </div>
 <div class="hint" id="videoModelHint"></div></div>
+<div class="field"><span class="label">Resolusi video</span>
+<div class="choices" data-choice="videoResolution">
+<button class="choice active" data-value="480p">480p</button>
+<button class="choice" data-value="720p">720p</button>
+<button class="choice" data-value="1080p">1080p</button>
+</div>
+<div class="hint" id="videoResolutionHint">Pilih kualitas video. Ketersediaan tergantung model dan paket Magic Hour.</div></div>
 <div class="field"><span class="label">Durasi video</span>
 <div class="choices" data-choice="videoDuration">
 <button class="choice active" data-value="5">5 detik</button>
@@ -768,7 +776,7 @@ let db=load();
 let modes={image:"text",video:"text",audio:"voice"};
 let choices={
  imageRatio:"16:9",imageStyle:"3D Donghua",
- videoDuration:"5",videoRatio:"16:9",camera:"Cinematic movement",videoModel:"ltx-2.5",
+ videoDuration:"5",videoRatio:"16:9",videoResolution:"480p",camera:"Cinematic movement",videoModel:"ltx-2.5",
  videoAudio:"true",audioLanguage:"id",audioEmotion:"normal",audioGender:"Laki-laki",
  musicMood:"Epic",charGender:"Laki-laki",charPitch:"Sedang",
  charTexture:"Jernih",pStyle:"3D Donghua cinematic",clipAudio:"original"
@@ -874,10 +882,11 @@ function setChoice(name,value){
 function onChoiceChange(name,value){
  if(name==="videoAudio")$("videoAudioOptions").hidden=value==="false";
  if(name==="videoModel"||name==="videoAudio"||name==="videoDuration")updateModelHint();
+ if(name==="videoModel")updateResolutionAvailability();
  if(name==="clipAudio")$("clipReplaceArea").hidden=value!=="replace";
  if(name==="charGender")updateCharVoiceHint();
  if(name==="audioGender")renderAudioVoiceInfo();
- if(["videoDuration","videoRatio","camera","videoAudio","videoModel"].includes(name))updateFinalPrompt();
+ if(["videoDuration","videoRatio","videoResolution","camera","videoAudio","videoModel"].includes(name))updateFinalPrompt();
 }
 document.querySelectorAll("[data-choice]").forEach(group=>{
  const name=group.dataset.choice;
@@ -1126,8 +1135,27 @@ const MODEL_INFO={
  "wan-3.0":{audio:true,ok:d=>d>=2&&d<=30,note:"Kualitas tinggi, audio native, durasi 2–30 detik."},
  "kling-2.6":{audio:false,ok:d=>d===5||d===10,note:"Aksi & kamera terkontrol. Tidak mendukung audio, durasi hanya 5 atau 10 detik."}
 };
+const MODEL_RESOLUTIONS={
+ "ltx-2.5":["480p","720p","1080p"],
+ "seedance-2.0-fast":["480p","720p"],
+ "wan-3.0":["480p","720p","1080p"],
+ "kling-2.6":["720p","1080p"]
+};
+function updateResolutionAvailability(){
+ const allowed=MODEL_RESOLUTIONS[choices.videoModel]||["480p","720p"];
+ document.querySelectorAll('[data-choice="videoResolution"] .choice').forEach(b=>{
+  b.disabled=!allowed.includes(b.dataset.value);
+  b.title=b.disabled?"Resolusi ini tidak didukung model yang dipilih":"";
+ });
+ if(!allowed.includes(choices.videoResolution)){
+  const fallback=allowed.includes("480p")?"480p":"720p";
+  setChoice("videoResolution",fallback);
+ }
+ $("videoResolutionHint").textContent="Didukung model "+choices.videoModel+": "+allowed.join(", ")+". Paket Magic Hour tetap dapat membatasi resolusi.";
+}
 function videoValidation(){
  const m=MODEL_INFO[choices.videoModel],d=Number(choices.videoDuration),wantAudio=choices.videoAudio==="true";
+ if(!(MODEL_RESOLUTIONS[choices.videoModel]||[]).includes(choices.videoResolution))return `Resolusi ${choices.videoResolution} tidak didukung model ${choices.videoModel}.`;
  if(!m.ok(d))return`Model ${choices.videoModel} tidak mendukung durasi ${d} detik.`;
  if(wantAudio&&!m.audio)return`Model ${choices.videoModel} tidak mendukung audio. Pilih "Tanpa Suara" atau model lain.`;
  return"";
@@ -1167,6 +1195,7 @@ $("generateVideo").onclick=async()=>{
  const f=new FormData();
  f.append("prompt",finalPrompt);f.append("mode",modes.video);
  f.append("model",choices.videoModel);
+ f.append("resolution",choices.videoResolution);
  f.append("duration",choices.videoDuration);f.append("aspect_ratio",choices.videoRatio);
  f.append("camera",choices.camera);
  f.append("audio",choices.videoAudio);
@@ -1222,26 +1251,8 @@ function clipRange(){
  if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>v.duration+0.05){alert("Atur waktu mulai dan selesai yang valid (0 – "+v.duration.toFixed(1)+" detik).");return null}
  return{v,start,end:Math.min(end,v.duration)};
 }
-function seekTo(v,t){return new Promise((resolve,reject)=>{
- if(Math.abs(v.currentTime-t)<0.05&&v.readyState>=2){resolve();return}
- let settled=false;
- const finish=(err)=>{if(settled)return;settled=true;clearTimeout(timer);v.removeEventListener("seeked",onSeeked);v.removeEventListener("error",onError);err?reject(err):resolve()};
- const onSeeked=()=>finish();
- const onError=()=>finish(new Error("Video gagal dipindahkan ke waktu yang dipilih."));
- const timer=setTimeout(()=>finish(new Error("Video terlalu lama mencari posisi. Coba unggah ulang atau gunakan MP4 H.264.")),10000);
- v.addEventListener("seeked",onSeeked,{once:true});v.addEventListener("error",onError,{once:true});
- try{v.currentTime=t}catch(e){finish(e)}
- })}
-function waitUntil(v,end,timeoutMs=120000){return new Promise((resolve,reject)=>{
- const started=Date.now();let timer;
- const check=()=>{
-  if(v.currentTime>=end-0.04||v.ended){clearTimeout(timer);resolve();return}
-  if(Date.now()-started>timeoutMs){clearTimeout(timer);reject(new Error("Pemutaran video terlalu lama atau macet. Coba klip yang lebih pendek."));return}
-  if(v.paused&&v.currentTime>0&&v.currentTime<end-0.2){clearTimeout(timer);reject(new Error("Pemutaran video berhenti sebelum klip selesai. Coba unggah ulang video."));return}
-  timer=setTimeout(check,100);
- };
- check();
- })}
+function seekTo(v,t){return new Promise(resolve=>{const timer=setTimeout(resolve,8000);v.addEventListener("seeked",()=>{clearTimeout(timer);resolve()},{once:true});v.currentTime=t})}
+function waitUntil(v,end){return new Promise(resolve=>{const check=()=>{if(v.currentTime>=end||v.ended||v.paused&&v.currentTime>0&&v.currentTime<end-0.2&&v.readyState<2){resolve()}else requestAnimationFrame(check)};check()})}
 $("previewClip").onclick=async()=>{
  const r=clipRange();if(!r||clipBusy)return;
  r.v.muted=choices.clipAudio!=="original";
@@ -1288,14 +1299,11 @@ $("makeClip").onclick=async()=>{
   if(!tracks.length)throw new Error("Tidak ada track video yang bisa direkam.");
   recorder=new MediaRecorder(new MediaStream(tracks),{mimeType:mime});
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-  const stopped=new Promise((res,rej)=>{
-   recorder.onstop=res;
-   recorder.onerror=e=>rej(e.error||new Error("Perekaman klip gagal di browser."));
-  });
+  const stopped=new Promise(res=>recorder.onstop=res);
   recorder.start(250);
   if(audioCtx)await audioCtx.resume();
   await Promise.all([v.play(),replaceEl?replaceEl.play():null]);
-  await waitUntil(v,end,Math.max(30000,(end-start)*3000+15000));
+  await waitUntil(v,end);
   v.pause();if(replaceEl)replaceEl.pause();
   recorder.stop();await stopped;
   const type=mime.split(";")[0];
@@ -1802,7 +1810,7 @@ $("saveSettings").onclick=()=>{readSettings();persist();loadSettings();updateCha
 async function checkWorker(silent){
  const pill=$("connectionStatus");pill.className="status";pill.textContent="● Memeriksa...";
  try{
-  const base=endpoint("/api/health");
+  const base=endpoint("/");
   const r=await fetch(base,{headers:db.settings.accessToken?{"X-MyuuAI-Token":db.settings.accessToken}:{}});
   if(!r.ok)throw new Error("HTTP "+r.status);
   const data=await r.json();
@@ -1859,7 +1867,7 @@ $("clearData").onclick=async()=>{
 /* ---------- INITIALIZE ---------- */
 function refreshAll(){
  loadSettings();updateStats();renderCharacters();renderEpisodes();renderProjects();renderGallery();
- renderAudioCharacterChoices();renderCharacterSelects();updateModelHint();updateFinalPrompt();updateCharVoiceHint();
+ renderAudioCharacterChoices();renderCharacterSelects();updateModelHint();updateResolutionAvailability();updateFinalPrompt();updateCharVoiceHint();
 }
 refreshAll();
 checkWorker(true);
